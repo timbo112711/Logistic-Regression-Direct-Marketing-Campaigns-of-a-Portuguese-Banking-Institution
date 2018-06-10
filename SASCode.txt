@@ -1,0 +1,144 @@
+/* Project #3 : Bank subcription Data
+			Tim McWilliams
+	 		   8/10/17 */
+
+/* Bring data in */
+data bank;
+	set esilib.bank;
+run;
+proc print data=bank;
+run;
+
+/* Explore the data */
+	proc contents data=bank; 
+	run;
+
+	/* Summary Stats */
+	proc means data=bank mean median max min std;
+	title 'Summary Statistics';
+	run;
+
+	/* Normal distribution plots */
+	proc sgplot data=bank;
+  	histogram age;
+  	density age;
+  	density age / type=kernel;
+	run;
+	
+	proc sgplot data=bank;
+  	histogram balance;
+  	density balance;
+  	density balance / type=kernel;
+	run;
+	
+	proc sgplot data=bank;
+  	histogram duration;
+  	density duration;
+  	density duration / type=kernel;
+	run;
+	
+	proc sgplot data=bank;
+  	histogram previous;
+  	density previous;
+  	density previous / type=kernel;
+	run;
+	
+	/* Scatter plots */
+	proc sgscatter data=bank;
+	matrix y age balance day duration campaign pdays previous /diagonal=(histogram);
+	title 'Matrix Scatter Plot of Numeric Variables';
+	run;
+
+	proc sgplot data=bank;
+	scatter x=age y=y;
+	run;
+	
+	proc sgplot data=bank;
+	scatter x=balance y=y;
+	run;
+	
+	proc sgplot data=bank;
+	scatter x=duration y=y;
+	run;
+	
+	/* Outlier found!!!!! */
+	proc sgplot data=bank;
+	scatter x=previous y=y;
+	run;
+	
+	/* categorical variable exploration */
+	proc freq data = bank;
+	run;
+
+/* Change response to numeric */
+data newbank;
+	set bank;
+	if y = 'ye' then y = 1;
+	else y = 0;
+run;
+
+/* Scatter Plots after changing reponse to numeric */
+	proc sgscatter data=newbank;
+	matrix y age balance day duration campaign pdays previous /diagonal=(histogram);
+	title 'Matrix Scatter Plot of Numeric Variables';
+	run;
+
+	proc sgscatter data = newbank;
+	matrix age balance day duration campaign pdays previous/ diagonal=(histogram) group = y;
+	title 'Matrix Scatter Plot of Numeric Variables by Response(y)';
+	run;
+	
+	proc sgplot data=newbank;
+	scatter x=age y=y;
+	run;
+	
+	proc sgplot data=newbank;
+	scatter x=balance y=y;
+	run;
+	
+	proc sgplot data=newbank;
+	scatter x=duration y=y;
+	run;
+	
+	/* Outlier found!!!!! */
+	proc sgplot data=bank;
+	scatter x=previous y=y;
+	run;
+	
+	proc sgpanel data=newbank;
+	panelby month;
+	scatter x=age y=y;
+	title 'Scatter Plot of Age Vs. Response(y) by Month';
+	run;
+
+/* Outlier found in prevous */
+/* Remove outlier from dataset */
+data bank2;
+	set newbank;
+	if previous = 275 then delete;
+run;
+
+/* Compare before/after removal of outlier */
+	/* No need to run every variable here since we are only looking at 
+		the prevous data */
+proc sgscatter data=bank2;
+matrix campaign pdays previous/ diagonal=(histogram);
+run;
+
+/* LDA */
+proc discrim data=bank2 pool=test crossvalidate;
+class y;
+var age balance day duration campaign pdays previous;
+run;
+
+/* Logistic Regression */
+proc logistic data=bank2;
+class education marital job default housing loan contact month poutcome / param=ref;
+model y = age balance day duration campaign pdays previous / scale=none aggregate lackfit influence;
+run;
+
+/* Residual exploration */
+proc panel data=newbank;
+model y = age balance day duration campaign pdays previous education marital job default housing loan contact month poutcome / fixtwo plots = all;
+run;
+	
